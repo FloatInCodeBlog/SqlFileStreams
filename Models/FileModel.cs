@@ -8,7 +8,8 @@ namespace SqlFileStreams.Models
     {
         public int Id { get; set; }
         public string Title { get; set; }
-        public byte[] File { get; set; }
+        public byte[] File { get; set; } //Column with filestream enabled
+        public byte[] File1 { get; set; } //Column with filestream disabled
     }
 
     public class FileViewModel

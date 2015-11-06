@@ -1,8 +1,9 @@
-﻿using System.IO;
+﻿using SqlFileStreams.Models;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Web.Mvc;
-using SqlFileStreams.Models;
 
 namespace SqlFileStreams.Controllers
 {
@@ -35,7 +36,7 @@ namespace SqlFileStreams.Controllers
         }
 
         [HttpPost]
-        [ValidateAntiForgeryToken]
+        [ActionName("Create")]
         public ActionResult Create([Bind(Include = "Title,File")] FileViewModel fileModel)
         {
             if (ModelState.IsValid)
@@ -46,6 +47,33 @@ namespace SqlFileStreams.Controllers
                 var file = new FileModel { Title = fileModel.Title, File = fileData.ToArray() };
                 db.FileModels.Add(file);
                 db.SaveChanges();
+
+                return RedirectToAction("Index");
+            }
+
+            return View(fileModel);
+        }
+
+        [HttpPost]
+        [ActionName("CreateStreaming")]
+        public ActionResult CreateStreaming([Bind(Include = "Title,File")] FileViewModel fileModel)
+        {
+            if (ModelState.IsValid)
+            {
+
+                var file = new FileModel { Title = fileModel.Title };
+                db.FileModels.Add(file);
+                db.SaveChanges();
+
+                VarbinaryStream blob = new VarbinaryStream(
+                                System.Configuration.ConfigurationManager.ConnectionStrings["SqlFileStreamsContext"].ConnectionString,
+                                "Files",
+                                "File1",
+                                "Id",
+                                file.Id);
+
+                Debug.WriteLine("Total length: " + fileModel.File.InputStream.Length);
+                fileModel.File.InputStream.CopyTo(blob, 16080);
 
                 return RedirectToAction("Index");
             }

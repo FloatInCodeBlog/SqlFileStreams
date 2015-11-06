@@ -12,12 +12,9 @@
                                     FormMethod.Post,
                                     new { enctype = "multipart/form-data" }))
 {
-    @Html.AntiForgeryToken()
-    
     <div class="form-horizontal">
-        <h4>FileModel</h4>
+        <h4>FileStream column</h4>
         <hr />
-        @Html.ValidationSummary(true, "", new { @class = "text-danger" })
 
         <div class="form-group">
             @Html.LabelFor(model => model.Title, htmlAttributes: new { @class = "control-label col-md-2" })
@@ -40,6 +37,39 @@
             </div>
         </div>
     </div>
+}
+
+<br />
+
+@using (Html.BeginForm("CreateStreaming",
+                                    "Files",
+                                    FormMethod.Post,
+                                    new { enctype = "multipart/form-data" }))
+{
+<div class="form-horizontal">
+    <h4>File streaming with blob</h4>
+    <hr />
+
+    <div class="form-group">
+        @Html.LabelFor(model => model.Title, htmlAttributes: new { @class = "control-label col-md-2" })
+        <div class="col-md-10">
+            @Html.EditorFor(model => model.Title, new { htmlAttributes = new { @class = "form-control" } })
+        </div>
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(model => model.File, htmlAttributes: new { @class = "control-label col-md-2" })
+        <div class="col-md-10">
+            <input type="file" name="File" id="File" />
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-md-offset-2 col-md-10">
+            <input type="submit" value="Create with streaming" class="btn btn-default" />
+        </div>
+    </div>
+</div>
 }
 
 <div>
