@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<post>
+  <title>Sql file stream in ASP.NET MVC with Entity framework</title>
+  <slug>sql-file-stream-in-asp.net-mvc-with-entity-framework</slug>
+  <author></author>
+  <pubDate>2015-06-13 18:52:44</pubDate>
+  <lastModified>2015-06-13 19:57:16</lastModified>
+  <excerpt></excerpt>
+  <content>&lt;blockquote&gt; &lt;p&gt;FILESTREAM enables SQL Server-based applications to store unstructured data, such as documents and images, on the file system. Applications can leverage the rich streaming APIs and performance of the file system and at the same time maintain transactional consistency between the unstructured data and corresponding structured data.&amp;nbsp; &lt;a title="https://msdn.microsoft.com/en-us/library/gg471497.aspx" href="https://msdn.microsoft.com/en-us/library/gg471497.aspx"&gt;https://msdn.microsoft.com/en-us/library/gg471497.aspx&lt;/a&gt;&lt;/p&gt;&lt;/blockquote&gt; &lt;p&gt;To learn more about sql file streams I decided to create simple image gallery.&lt;/p&gt; &lt;p&gt;&lt;img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://floatincode.net/posts/files/Sql-file-stream_11E92/image.png" width="470" height="378"&gt;&lt;/p&gt; &lt;p&gt;&amp;nbsp;&lt;/p&gt; &lt;p&gt;&amp;nbsp;&lt;/p&gt; &lt;p&gt;First of all you need to &lt;a href="https://msdn.microsoft.com/en-us/library/cc645923.aspx"&gt;enable File stream&lt;/a&gt; for sql server instance.&lt;/p&gt; &lt;p&gt;Then create new file stream for database:&lt;/p&gt; &lt;p&gt;&lt;img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://floatincode.net/posts/files/Sql-file-stream_11E92/image_3.png" width="664" height="366"&gt;&lt;/p&gt; &lt;p&gt;&amp;nbsp;&lt;/p&gt; &lt;p&gt;Specify where to save file stream data by adding new file:&lt;/p&gt; &lt;p&gt;&lt;img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://floatincode.net/posts/files/Sql-file-stream_11E92/image_4.png" width="877" height="249"&gt;&lt;/p&gt; &lt;p&gt;&amp;nbsp;&lt;/p&gt; &lt;p&gt;Table that has file stream column also must have not null, unique rowguidcol column and varbinary column for file content. File content column data will be saved separately and fetched from file during query execution.&amp;nbsp; Sample table that also has title and primary key:&lt;/p&gt;&lt;pre class="brush: csharp;"&gt;CREATE TABLE [dbo].[Files](
+    [id] [int] IDENTITY(1,1) NOT NULL,
+    [IdFile] [uniqueidentifier] unique ROWGUIDCOL  NOT NULL,
+    [Title] [nvarchar](max) NULL,
+    [File] [varbinary](max) FILESTREAM  NULL,
+ CONSTRAINT [PK_Table_1] PRIMARY KEY CLUSTERED 
+(
+    [id] ASC
+))
+
+GO
+
+ALTER TABLE [dbo].[Files] ADD  CONSTRAINT [DF_Files_IdFile]  DEFAULT (newid()) FOR [IdFile]
+GO
+&lt;/pre&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p&gt;Entity framework model:&lt;/p&gt;&lt;pre class="brush: csharp;"&gt;[Table("Files")]
+public class FileModel
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    public byte[] File { get; set; }
+}
+&lt;/pre&gt;
+&lt;p&gt;Note that IdFile column is not present, it has default value and is of no use for us, it is used by sql server.&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p&gt;View model used for creating files:&lt;/p&gt;&lt;pre class="brush: csharp;"&gt;public class FileViewModel
+{
+    public string Title { get; set; }
+    public HttpPostedFileBase File { get; set; }
+}
+&lt;/pre&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p&gt;To save files with entity framework we don’t need any specific code, just read all bytes of received file:&lt;/p&gt;&lt;pre class="brush: csharp;"&gt;[HttpPost]
+[ValidateAntiForgeryToken]
+public ActionResult Create([Bind(Include = "Title,File")] FileViewModel fileModel)
+{
+    if (ModelState.IsValid)
+    {
+        var fileData = new MemoryStream();
+        fileModel.File.InputStream.CopyTo(fileData);
+
+        var file = new FileModel { Title = fileModel.Title, File = fileData.ToArray() };
+        db.FileModels.Add(file);
+        db.SaveChanges();
+
+        return RedirectToAction("Index");
+    }
+
+    return View(fileModel);
+}
+&lt;/pre&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p&gt;To display images we can simply convert bytes to base64 string:&lt;/p&gt;&lt;pre class="brush: csharp;"&gt;&amp;lt;td&amp;gt;
+    @{
+        var base64 = Convert.ToBase64String(item.File);
+        var imgSrc = String.Format("data:image/gif;base64,{0}", base64);
+    }
+    &amp;lt;img src="@imgSrc" style="max-height:250px"/&amp;gt;
+&amp;lt;/td&amp;gt;
+&lt;/pre&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p&gt;After uploading several files, go to file stream location that you specified.&lt;/p&gt;
+&lt;p&gt;&lt;img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://floatincode.net/posts/files/Sql-file-stream_11E92/image_5.png" width="579" height="163"&gt;&lt;/p&gt;
+&lt;p&gt;You should see one or several folders with guid names, in one of these folders should be files without extensions also with guid names:&lt;/p&gt;
+&lt;p&gt;&lt;img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://floatincode.net/posts/files/Sql-file-stream_11E92/image_6.png" width="653" height="117"&gt;&lt;/p&gt;
+&lt;p&gt;These are uploaded images, you can open it with any image viewer, even paint will do the trick.&lt;/p&gt;
+&lt;p&gt;&lt;img title="image" style="border-left-width: 0px; border-right-width: 0px; background-image: none; border-bottom-width: 0px; padding-top: 0px; padding-left: 0px; display: inline; padding-right: 0px; border-top-width: 0px" border="0" alt="image" src="http://floatincode.net/posts/files/Sql-file-stream_11E92/image_7.png" width="548" height="388"&gt;&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p&gt;&lt;a href="https://github.com/FloatInCodeBlog/SqlFileStreams"&gt;Source code.&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Database back up included in source (FilesTable.bak).&lt;/p&gt;</content>
+  <ispublished>true</ispublished>
+  <categories>
+    <category>MSSQL</category>
+    <category>Entity framework</category>
+    <category>MVC</category>
+  </categories>
+  <comments></comments>
+</post>
